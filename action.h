@@ -34,7 +34,7 @@ struct Inc {
 struct Move {
     int from;
     int to;
-    int count;
+    int cyborgs;
 };
 
 struct Msg {

@@ -27,15 +27,15 @@ struct RandomStrategy {
         action::Move move = {-1, -1, 0};
         for (const auto& factory : engine.factories) {
             if (factory.whose == player.who_) {
-                if (move.count < factory.cyborgs) {
+                if (move.cyborgs < factory.cyborgs) {
                     move.from = factory.id;
-                    move.count = factory.cyborgs / 2;
+                    move.cyborgs = factory.cyborgs / 2;
                 }
             } else {
                 move.to = factory.id;
             }
         }
-        if (move.from != -1 && move.to != -1 && move.count > 0) {
+        if (move.from != -1 && move.to != -1 && move.cyborgs > 0) {
             return {move};
         }
         return {};

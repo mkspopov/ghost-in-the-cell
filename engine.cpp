@@ -2,19 +2,26 @@
 
 void Engine::Add(action::Bomb bomb, Whose whose) {
     const int id = nextId_++;
-    pos_.try_emplace(id, pos_.at(bomb.from));
     bombs_.push_back({id, whose, bomb.from, bomb.to, Distance(bomb.from, bomb.to)});
+    if (whose == Whose::Mine) {
+        ASSERT(mineBombs_ > 0);
+        --mineBombs_;
+    } else {
+        ASSERT(opponentBombs_ > 0);
+        --opponentBombs_;
+    }
 }
 
 void Engine::Add(action::Move move, Whose whose) {
     const int id = nextId_++;
-    pos_.try_emplace(id, pos_.at(move.from));
-    troops_.push_back({id, whose, move.from, move.to, move.count, Distance(move.from, move.to)});
+    troops_.push_back({id, whose, move.from, move.to, move.cyborgs, Distance(move.from, move.to)});
+    ASSERT(factories_.at(move.from).cyborgs >= move.cyborgs);
+    factories_.at(move.from).cyborgs -= move.cyborgs;
 }
 
 void Engine::AddFactory(Whose whose, int production) {
     int id = nextId_++;
-    pos_.try_emplace(id, 100 + factories_.size() * 200, 100 + factories_.size() * 200);
+    factoryPos_.emplace_back(100 + factories_.size() * 200, 100 + factories_.size() * 200);
     factories_.push_back({
         .id = id,
         .whose = whose,
@@ -24,11 +31,11 @@ void Engine::AddFactory(Whose whose, int production) {
 }
 
 int Engine::Distance(int from, int to) const {
-    return graph_->Eta(from, to);
+    return graph_->Distance(from, to);
 }
 
 Engine::State Engine::GetState() const {
-    return {bombs_, factories_, troops_, pos_, *graph_};
+    return {bombs_, factories_, factoryPos_, troops_, *graph_};
 }
 
 Whose Engine::HasWinner() const {
@@ -37,30 +44,31 @@ Whose Engine::HasWinner() const {
      * You have more cyborgs than your opponent after 200 turns.
      */
     int mineCyborgs = 0;
-    int otherCyborgs = 0;
+    int opponentCyborgs = 0;
     for (const auto& troop : troops_) {
         if (troop.whose == Whose::Mine) {
             mineCyborgs += troop.count;
         } else {
-            otherCyborgs += troop.count;
+            opponentCyborgs += troop.count;
         }
     }
     bool haveFactories = false;
     bool hasFactories = false;
     for (const auto& factory : factories_) {
         if (factory.whose == Whose::Mine) {
-            haveFactories = factory.production > 0;
+            haveFactories |= factory.production > 0;
             mineCyborgs += factory.cyborgs;
         } else if (factory.whose == Whose::Opponent) {
-            hasFactories = factory.production > 0;
-            otherCyborgs += factory.cyborgs;
+            hasFactories |= factory.production > 0;
+            opponentCyborgs += factory.cyborgs;
         }
     }
-    const auto haveMore = turn_ >= 200 && mineCyborgs > otherCyborgs;
-    const auto hasMore = turn_ >= 200 && mineCyborgs < otherCyborgs;
+    const auto haveMore = turn_ >= 200 && mineCyborgs > opponentCyborgs;
+    const auto hasMore = turn_ >= 200 && mineCyborgs < opponentCyborgs;
     if (mineCyborgs == 0 && !haveFactories || hasMore) {
         return Whose::Opponent;
-    } else if (otherCyborgs == 0 && !hasFactories || haveMore) {
+    }
+    if (opponentCyborgs == 0 && !hasFactories || haveMore) {
         return Whose::Mine;
     }
     return Whose::Neutral;
@@ -92,19 +100,16 @@ void Engine::Update() {
      * Remaining cyborgs fight against the ones already present in the factory
      * (beware that the cyborgs currently leaving do not fight).
      */
-    std::unordered_map<int, std::pair<Troop, Troop>> troopsByTarget;
+    thread_local std::vector<int> troopsByTarget(factories_.size());
+    std::fill(troopsByTarget.begin(), troopsByTarget.end(), 0);
     for (std::size_t i = 0; i < troops_.size(); ) {
         auto& troop = troops_[i];
         ASSERT(troop.eta >= 0);
         if (troop.eta == 0) {
-            auto& [mine, opponent] = troopsByTarget.try_emplace(
-                troop.to,
-                Troop{-1, Whose::Mine, -1, troop.to, 0, 0},
-                Troop{-1, Whose::Opponent, -1, troop.to, 0, 0}).first->second;
             if (troop.whose == Whose::Mine) {
-                mine.count += troop.count;
+                troopsByTarget.at(troop.to) += troop.count;
             } else {
-                opponent.count += troop.count;
+                troopsByTarget.at(troop.to) -= troop.count;
             }
             std::swap(troop, troops_.back());
             troops_.pop_back();
@@ -112,27 +117,29 @@ void Engine::Update() {
             ++i;
         }
     }
-    for (const auto& [id, troops] : troopsByTarget) {
+    for (std::size_t id = 0; id < factories_.size(); ++id) {
         auto& factory = factories_.at(id);
-        const auto left = troops.first.count - troops.second.count;
-        if (factory.whose == Whose::Mine) {
-            factory.cyborgs += left;
-            if (factory.cyborgs < 0) {
-                factory.cyborgs = -factory.cyborgs;
-                factory.whose = Whose::Opponent;
+        const auto left = troopsByTarget.at(id);
+        if (left > 0) {
+            if (factory.whose != Whose::Mine) {
+                factory.cyborgs -= left;
+                if (factory.cyborgs < 0) {
+                    factory.cyborgs = -factory.cyborgs;
+                    factory.whose = Whose::Mine;
+                }
+            } else {
+                factory.cyborgs += left;
             }
-        } else if (factory.whose == Whose::Opponent) {
-            factory.cyborgs -= left;
-            if (factory.cyborgs < 0) {
-                factory.cyborgs = -factory.cyborgs;
-                factory.whose = Whose::Mine;
-            }
-        } else if (left > 0) {
-            factory.cyborgs = left;
-            factory.whose = Whose::Mine;
         } else if (left < 0) {
-            factory.cyborgs = -left;
-            factory.whose = Whose::Opponent;
+            if (factory.whose != Whose::Opponent) {
+                factory.cyborgs += left;
+                if (factory.cyborgs < 0) {
+                    factory.cyborgs = -factory.cyborgs;
+                    factory.whose = Whose::Opponent;
+                }
+            } else {
+                factory.cyborgs -= left;
+            }
         }
     }
 

@@ -13,7 +13,7 @@ public:
         adjList_[from].try_emplace(to, weight);
     }
 
-    int Eta(int from, int to) const {
+    int Distance(int from, int to) const {
         return adjList_.at(from).at(to);
     }
 

@@ -1,23 +1,5 @@
 #include "game.h"
 
-#include <SFML/Graphics/Font.hpp>
-#include <SFML/Graphics/Text.hpp>
-
-const inline auto FONT = []() {
-    sf::Font font;
-    if (!font.loadFromFile("/usr/share/fonts/truetype/tlwg/Purisa.ttf")) {
-        throw std::runtime_error("cannot load Purisa font");
-    }
-    return font;
-}();
-
-void DrawText(sf::RenderWindow& window, sf::Vector2f pos, const std::string& str) {
-    static sf::Text text(str, FONT, 20);
-    text.setString(str);
-    text.setPosition(pos);
-    window.draw(text);
-}
-
 struct Metrics {
     struct Metric {
         double sum = 0;
@@ -70,6 +52,8 @@ void RunSimulation(TSim& game, std::string_view name, int steps = 0) {
     sf::Clock clock;
     sf::Clock totalClock;
     Metrics metrics;
+    const sf::Int64 usPerUpdate = 1'000'000;
+    sf::Int64 waitUpdate = 0;
 
     int step = 0;
     while (window.isOpen() && ++step != steps) {
@@ -88,15 +72,19 @@ void RunSimulation(TSim& game, std::string_view name, int steps = 0) {
             break;
         }
 
-        const auto dt = game.Update();
-        game.Render(0);
+        waitUpdate += totalClock.restart().asMicroseconds();
+        while (waitUpdate >= usPerUpdate) {
+            waitUpdate -= usPerUpdate;
+            clock.restart();
+            game.Update();
+            metrics.Update("update time: {:.2f}us", clock.restart().asMicroseconds());
+        }
+        game.Render(static_cast<float>(waitUpdate) / usPerUpdate);
 
-        metrics.Update("update time: {:.2f}us", clock.restart().asMicroseconds());
-        metrics.Update("updates per frame: {:.3f}", 1 / dt);
         metrics.Print(window, totalClock.getElapsedTime().asMilliseconds());
 
         window.display();
-        std::this_thread::sleep_for(500ms);
+        std::this_thread::sleep_for(5ms);
     }
 }
 
