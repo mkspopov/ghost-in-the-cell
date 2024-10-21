@@ -20,8 +20,6 @@ struct Factory {
     Whose whose;
     int production;
     int cyborgs;
-
-    int explosion_ = 0;
 };
 
 struct Troop {

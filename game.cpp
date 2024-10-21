@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "graph.h"
+
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/Text.hpp>
@@ -27,6 +29,9 @@ void DrawText(sf::RenderWindow& window, sf::Vector2f pos, const std::string& str
 
 sf::Vector2f SfPos(std::pair<float, float> pos) {
     return {pos.first, pos.second};
+}
+
+Game::Game(Engine& engine) : engine_(engine) {
 }
 
 void Game::Init(sf::RenderWindow& window) {
@@ -69,12 +74,6 @@ void Game::Render(float dt) {
                 * (SfPos(factoryPos.at(entity.to)) - SfPos(factoryPos.at(entity.from)))
                 / static_cast<float>(graph.Distance(entity.from, entity.to)));
     };
-    const auto drawText = [&](const auto& entity, const sf::CircleShape& shape) {
-        DrawText(
-            *window_,
-            shape.getPosition() + sf::Vector2f{shape.getRadius() / 4, shape.getRadius() / 4},
-            std::format("{}, {}", static_cast<int>(entity.whose), entity.id));
-    };
 
     thread_local auto bomb = sf::CircleShape(BOMB_RADIUS);
     for (const auto& entity : bombs) {
@@ -85,7 +84,6 @@ void Game::Render(float dt) {
             bomb.setFillColor(OPPONENT_BOMB);
         }
         window_->draw(bomb);
-        drawText(entity, bomb);
     }
     thread_local auto troop = sf::CircleShape(TROOP_RADIUS);
     for (const auto& entity : troops) {
@@ -96,7 +94,10 @@ void Game::Render(float dt) {
             troop.setFillColor(OPPONENT_TROOP);
         }
         window_->draw(troop);
-        drawText(entity, troop);
+        DrawText(
+            *window_,
+            troop.getPosition() + sf::Vector2f{troop.getRadius() / 4, troop.getRadius() / 4},
+            std::format("{}", entity.count));
     }
 }
 

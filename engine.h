@@ -3,10 +3,11 @@
 #include "action.h"
 #include "const.h"
 #include "entities.h"
-#include "graph.h"
 
 #include <memory>
 #include <unordered_map>
+
+class Graph;
 
 class Engine {
 public:
@@ -32,10 +33,14 @@ public:
 
     void Move();
 
+    void SetGraph(std::unique_ptr<Graph> graph);
+
     void Update();
 
+private:
     std::vector<Bomb> bombs_;
     std::vector<Factory> factories_;
+    std::vector<int> factoryExplosionTurns_;
     std::vector<Pos> factoryPos_;
     std::vector<Troop> troops_;
     std::unique_ptr<Graph> graph_;

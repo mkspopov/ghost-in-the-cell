@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "graph.h"
+
 struct Metrics {
     struct Metric {
         double sum = 0;
@@ -92,9 +94,10 @@ std::unique_ptr<Graph> GenerateCompleteGraph(Engine& engine) {
     /*
      * Is the graph always complete?
      */
-    auto graph = std::make_unique<Graph>(engine.factories_.size());
-    for (std::size_t i = 0; i < engine.factories_.size(); ++i) {
-        for (std::size_t j = i + 1; j < engine.factories_.size(); ++j) {
+    const auto factories = engine.GetState().factories;
+    auto graph = std::make_unique<Graph>(factories.size());
+    for (std::size_t i = 0; i < factories.size(); ++i) {
+        for (std::size_t j = i + 1; j < factories.size(); ++j) {
             graph->AddEdge(i, j, j - i);
             graph->AddEdge(j, i, j - i);
         }
@@ -103,12 +106,13 @@ std::unique_ptr<Graph> GenerateCompleteGraph(Engine& engine) {
 }
 
 int main() {
-    Game game;
-    game.engine_.AddFactory(Whose::Mine, 1);
-    game.engine_.AddFactory(Whose::Neutral, 1);
-    game.engine_.AddFactory(Whose::Neutral, 2);
-    game.engine_.AddFactory(Whose::Opponent, 1);
-    game.engine_.graph_ = GenerateCompleteGraph(game.engine_);
+    Engine engine;
+    Game game(engine);
+    engine.AddFactory(Whose::Mine, 1);
+    engine.AddFactory(Whose::Neutral, 1);
+    engine.AddFactory(Whose::Neutral, 2);
+    engine.AddFactory(Whose::Opponent, 1);
+    engine.SetGraph(GenerateCompleteGraph(engine));
     RunSimulation(game, "Ghost in the Cell");
     return 0;
 }

@@ -1,5 +1,7 @@
 #include "engine.h"
 
+#include "graph.h"
+
 void Engine::Add(action::Bomb bomb, Whose whose) {
     const int id = nextId_++;
     bombs_.push_back({id, whose, bomb.from, bomb.to, Distance(bomb.from, bomb.to)});
@@ -21,6 +23,7 @@ void Engine::Add(action::Move move, Whose whose) {
 
 void Engine::AddFactory(Whose whose, int production) {
     int id = nextId_++;
+    factoryExplosionTurns_.push_back(0);
     factoryPos_.emplace_back(100 + factories_.size() * 200, 100 + factories_.size() * 200);
     factories_.push_back({
         .id = id,
@@ -83,13 +86,17 @@ void Engine::Move() {
     }
 }
 
+void Engine::SetGraph(std::unique_ptr<Graph> graph) {
+    graph_ = std::move(graph);
+}
+
 void Engine::Update() {
     /*
      * Each turn, every non-neutral factory produces between 0 and 3 cyborgs.
      */
     for (auto& factory : factories_) {
-        if (factory.explosion_ > 0) {
-            --factory.explosion_;
+        if (factoryExplosionTurns_[factory.id] > 0) {
+            --factoryExplosionTurns_[factory.id];
         } else if (factory.whose == Whose::Mine || factory.whose == Whose::Opponent) {
             factory.cyborgs += factory.production;
         }
@@ -150,7 +157,7 @@ void Engine::Update() {
             auto& to = factories_.at(bomb.to);
             to.cyborgs -= std::max(10, static_cast<int>(factories_.size()) / 2);
             to.cyborgs = std::max(to.cyborgs, 0);
-            to.explosion_ = 5;
+            factoryExplosionTurns_[to.id] = 5;
             std::swap(bombs_.back(), bomb);
             bombs_.pop_back();
         } else {

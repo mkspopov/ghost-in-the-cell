@@ -16,18 +16,21 @@ void DrawText(sf::RenderWindow& window, sf::Vector2f pos, const std::string& str
 
 class Game {
 public:
+    explicit Game(Engine& engine);
+
     void Init(sf::RenderWindow& window);
 
     void HandleInput(sf::Event&);
 
     void Render(float dt);
 
-    void Update(Player& player);
-
     double Update();
 
+private:
+    void Update(Player& player);
+
+    Engine& engine_;
     sf::RenderWindow* window_;
-    Engine engine_;
     Player mine_{Whose::Mine};
     Player opponent_{Whose::Opponent};
 };

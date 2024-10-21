@@ -17,6 +17,7 @@ public:
         return adjList_.at(from).at(to);
     }
 
+private:
     std::vector<std::unordered_map<int, Weight>> adjList_;
 };
 
