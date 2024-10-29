@@ -1,71 +1,74 @@
 #pragma once
 
+#include <queue>
 #include <unordered_map>
 #include <vector>
 
 class Graph {
 public:
     using Weight = int;
+    static constexpr inline Weight NONE = -1;
 
-    explicit Graph(int numVertices) : adjList_(numVertices) {}
+    Graph(int numVertices) : adjList_(numVertices) {
+    }
 
     void AddEdge(int from, int to, int weight) {
         adjList_[from].try_emplace(to, weight);
     }
 
     int Distance(int from, int to) const {
-        return adjList_.at(from).at(to);
+        return adjList_[from].contains(to) ? adjList_[from].at(to) : NONE;
+    }
+
+    const auto& Edges(int from) const {
+        return adjList_[from];
+    }
+
+    int Vertices() const {
+        return adjList_.size();
     }
 
 private:
     std::vector<std::unordered_map<int, Weight>> adjList_;
 };
 
-//class Graph {
-//public:
-//    using Weight = int;
+//struct ShortestPath {
+//    std::vector<int> path;
+//    Graph::Weight weight;
+//};
 //
-//    struct Edge {
-//        int id;
-//        int from;
-//        int to;
-//    };
-//
-//    Graph(int numVertices) : adjList_(numVertices) {}
-//
-//    void AddEdge(int from, int to, int weight) {
-//        int id = edgeProperties_.size();
-//        edgeProperties_.push_back(weight);
-//        edges_.push_back({id, from, to});
-//        adjList_[from].push_back(id);
-//    }
-//
-//    int Eta(int from, int to) const {
-//        for (const auto neighbor : adjList_.at(from)) {
-//            if (to == edges_.at(neighbor).to) {
-//                return edgeProperties_.at(neighbor);
+//auto Dijkstra(Graph& graph, int from) {
+//    std::vector<int> parents(graph.Vertices(), Graph::NONE);
+//    std::vector<int> distances(graph.Vertices(), Graph::NONE);
+//    using Elem = std::pair<Graph::Weight, int>;
+//    std::priority_queue<Elem, std::vector<Elem>, std::greater<>> heap;
+//    heap.emplace(0, from);
+//    while (!heap.empty()) {
+//        auto [distance, cur] = heap.top();
+//        heap.pop();
+//        if (distance >= distances[cur]) {
+//            continue;
+//        }
+//        for (auto [to, weight] : graph.Edges(cur)) {
+//            if (distances[to] == Graph::NONE || distances[to] > distance + weight) {
+//                distances[to] = distance + weight;
+//                heap.emplace(distances[to], to);
+//                parents[to] = cur;
 //            }
 //        }
-//        throw std::runtime_error("no such edge");
+//    }
+//}
+//
+//class ExtendedGraph {
+//public:
+//    explicit ExtendedGraph(Graph& graph) : graph_(graph) {
+//        for (int from = 0; from < graph_.Vertices(); ++from) {
+//            auto [parents, distances] = Dijkstra(graph_, from);
+//
+//        }
 //    }
 //
-//    auto GetOutgoingEdges(int from) const {
-//        return adjList_[from];
-//    }
-//
-//    int GetTarget(int edgeId) const {
-//        return edges_[edgeId].to;
-//    }
-//
-//    int GetSource(int edgeId) const {
-//        return edges_[edgeId].from;
-//    }
-//
-//    int GetWeight(int edgeId) const {
-//        return edgeProperties_[edgeId];
-//    }
-//
-//    std::vector<std::vector<int>> adjList_;
-//    std::vector<Weight> edgeProperties_;
-//    std::vector<Edge> edges_;
+//private:
+//    Graph& graph_;
+//    std::unordered_map<int, ShortestPath> paths_;
 //};

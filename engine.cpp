@@ -2,10 +2,15 @@
 
 #include "graph.h"
 
-void Engine::Add(action::Bomb bomb, Whose whose) {
+void Engine::Add(action::Bomb bomb) {
+    const auto distance = graph_->Distance(bomb.from, bomb.to);
+    if (distance == Graph::NONE) {
+        throw std::runtime_error(std::format("no such edge {}->{}", bomb.from, bomb.to));
+    }
     const int id = nextId_++;
-    bombs_.push_back({id, whose, bomb.from, bomb.to, Distance(bomb.from, bomb.to)});
-    if (whose == Whose::Mine) {
+    auto& factory = factories_.at(bomb.from);
+    bombs_.push_back({id, factory.whose, bomb.from, bomb.to, distance});
+    if (factory.whose == Whose::Mine) {
         ASSERT(mineBombs_ > 0);
         --mineBombs_;
     } else {
@@ -14,14 +19,19 @@ void Engine::Add(action::Bomb bomb, Whose whose) {
     }
 }
 
-void Engine::Add(action::Move move, Whose whose) {
+void Engine::Add(action::Move move) {
+    const auto distance = graph_->Distance(move.from, move.to);
+    if (distance == Graph::NONE) {
+        throw std::runtime_error(std::format("no such edge {}->{}", move.from, move.to));
+    }
     const int id = nextId_++;
-    troops_.push_back({id, whose, move.from, move.to, move.cyborgs, Distance(move.from, move.to)});
-    ASSERT(factories_.at(move.from).cyborgs >= move.cyborgs);
-    factories_.at(move.from).cyborgs -= move.cyborgs;
+    auto& factory = factories_.at(move.from);
+    troops_.push_back({id, factory.whose, move.from, move.to, move.cyborgs, distance});
+    ASSERT(factory.cyborgs >= move.cyborgs);
+    factory.cyborgs -= move.cyborgs;
 }
 
-void Engine::AddFactory(Whose whose, int production) {
+void Engine::AddFactory(Whose whose, int production, int cyborgs) {
     int id = nextId_++;
     factoryExplosionTurns_.push_back(0);
     factoryPos_.emplace_back(100 + factories_.size() * 200, 100 + factories_.size() * 200);
@@ -29,12 +39,8 @@ void Engine::AddFactory(Whose whose, int production) {
         .id = id,
         .whose = whose,
         .production = production,
-        .cyborgs = 0,
+        .cyborgs = cyborgs,
     });
-}
-
-int Engine::Distance(int from, int to) const {
-    return graph_->Distance(from, to);
 }
 
 Engine::State Engine::GetState() const {

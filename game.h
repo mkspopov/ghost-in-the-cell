@@ -2,6 +2,7 @@
 
 #include "engine.h"
 #include "player.h"
+#include "strategy.h"
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window/Event.hpp>
@@ -27,10 +28,8 @@ public:
     double Update();
 
 private:
-    void Update(Player& player);
-
     Engine& engine_;
     sf::RenderWindow* window_;
-    Player mine_{Whose::Mine};
-    Player opponent_{Whose::Opponent};
+    Player<RandomStrategy> mine_{Whose::Mine, RandomStrategy{}};
+    Player<RandomStrategy> opponent_{Whose::Opponent, RandomStrategy{}};
 };

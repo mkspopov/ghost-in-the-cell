@@ -3,8 +3,13 @@ project(ghost_in_the_cell)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(engine engine.cpp)
-
-add_executable(${PROJECT_NAME} main.cpp game.cpp)
 find_package(SFML REQUIRED COMPONENTS graphics window system)
-target_link_libraries(${PROJECT_NAME} engine sfml-graphics sfml-window sfml-system)
+
+set(COMMON engine.cpp utils.cpp)
+
+add_executable(${PROJECT_NAME} main.cpp game.cpp ${COMMON})
+target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-window sfml-system)
+
+add_executable(test_strategy test.cpp game.cpp ${COMMON}
+    strategy.h)
+target_link_libraries(test_strategy sfml-graphics sfml-window sfml-system)

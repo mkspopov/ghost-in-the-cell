@@ -5,7 +5,7 @@
 #include "entities.h"
 
 #include <memory>
-#include <unordered_map>
+#include <vector>
 
 class Graph;
 
@@ -19,13 +19,11 @@ public:
         const Graph& graph;
     };
 
-    void Add(action::Bomb bomb, Whose whose);
+    void Add(action::Bomb bomb);
 
-    void Add(action::Move move, Whose whose);
+    void Add(action::Move move);
 
-    void AddFactory(Whose whose, int production);
-
-    int Distance(int from, int to) const;
+    void AddFactory(Whose whose, int production, int cyborgs = 0);
 
     State GetState() const;
 

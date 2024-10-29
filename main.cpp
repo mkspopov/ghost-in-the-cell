@@ -1,6 +1,7 @@
 #include "game.h"
 
 #include "graph.h"
+#include "utils.h"
 
 struct Metrics {
     struct Metric {
@@ -88,21 +89,6 @@ void RunSimulation(TSim& game, std::string_view name, int steps = 0) {
         window.display();
         std::this_thread::sleep_for(5ms);
     }
-}
-
-std::unique_ptr<Graph> GenerateCompleteGraph(Engine& engine) {
-    /*
-     * Is the graph always complete?
-     */
-    const auto factories = engine.GetState().factories;
-    auto graph = std::make_unique<Graph>(factories.size());
-    for (std::size_t i = 0; i < factories.size(); ++i) {
-        for (std::size_t j = i + 1; j < factories.size(); ++j) {
-            graph->AddEdge(i, j, j - i);
-            graph->AddEdge(j, i, j - i);
-        }
-    }
-    return graph;
 }
 
 int main() {

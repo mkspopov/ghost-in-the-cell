@@ -1,43 +1,48 @@
 #pragma once
 
 #include "engine.h"
+#include <utility>
 
+template <class TStrategy>
 class Player {
 public:
-    explicit Player(Whose who) : who_(who) {
+    Player(Whose who, TStrategy strategy) : strategy_(strategy), who_(who) {
     }
 
-    template <class TStrategy>
-    std::vector<action::Action> Play(const Engine::State& engine, TStrategy&& strategy) {
+    void Play(Engine& engine) {
         /*
          * Be careful, your radar is able to detect the launch of a bomb but you don't know where its target is!
          *
          * It is impossible to send a bomb and a troop at the same time from the same factory and to the same destination.
          * If you try to do so, only the bomb will be sent.
          */
-        return strategy(engine, *this);
-    }
-
-    int bombs_ = 2;
-    const Whose who_;
-};
-
-struct RandomStrategy {
-    std::vector<action::Action> operator()(const Engine::State& engine, Player& player) const {
-        action::Move move = {-1, -1, 0};
-        for (const auto& factory : engine.factories) {
-            if (factory.whose == player.who_) {
-                if (move.cyborgs < factory.cyborgs) {
-                    move.from = factory.id;
-                    move.cyborgs = factory.cyborgs / 2;
-                }
+        const auto actions = strategy_.MakeDecision(engine.GetState(), *this);
+        for (const auto& action : actions) {
+            if (auto ptr = std::get_if<action::Bomb>(&action)) {
+                engine.Add(*ptr);
+            } else if (auto ptr = std::get_if<action::Inc>(&action)) {
+                /*
+                * At any moment, you can decide to sacrifice 10 cyborgs in a factory to indefinitely increase its production by one cyborg per turn.
+                * A factory will not be able to produce more than 3 cyborgs per turn.
+                */
+                throw std::runtime_error("not implemented");
+            } else if (auto ptr = std::get_if<action::Move>(&action)) {
+                engine.Add(*ptr);
+            } else if (auto ptr = std::get_if<action::Msg>(&action)) {
+                // std::cerr << ptr->msg << std::endl;
+            } else if (auto ptr = std::get_if<action::Wait>(&action)) {
             } else {
-                move.to = factory.id;
+                throw std::runtime_error("unknown action");
             }
         }
-        if (move.from != -1 && move.to != -1 && move.cyborgs > 0) {
-            return {move};
-        }
-        return {};
     }
+
+    Whose Who() const {
+        return who_;
+    }
+
+private:
+    TStrategy strategy_;
+    int bombs_ = 2;
+    const Whose who_;
 };

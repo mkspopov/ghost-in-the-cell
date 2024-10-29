@@ -1,10 +1,15 @@
 #include "game.h"
 
+#include "engine.h"
 #include "graph.h"
+#include "player.h"
+#include "strategy.h"
 
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/Text.hpp>
+
+#include <string>
 
 const inline auto FONT = []() {
     sf::Font font;
@@ -101,28 +106,6 @@ void Game::Render(float dt) {
     }
 }
 
-void Game::Update(Player& player) {
-    const auto actions = player.Play(engine_.GetState(), RandomStrategy{});
-    for (const auto& action : actions) {
-        if (auto ptr = std::get_if<action::Bomb>(&action)) {
-            engine_.Add(*ptr, player.who_);
-        } else if (auto ptr = std::get_if<action::Inc>(&action)) {
-            /*
-             * At any moment, you can decide to sacrifice 10 cyborgs in a factory to indefinitely increase its production by one cyborg per turn.
-             * A factory will not be able to produce more than 3 cyborgs per turn.
-             */
-            throw std::runtime_error("not implemented");
-        } else if (auto ptr = std::get_if<action::Move>(&action)) {
-            engine_.Add(*ptr, player.who_);
-        } else if (auto ptr = std::get_if<action::Msg>(&action)) {
-            std::cerr << ptr->msg << std::endl;
-        } else if (auto ptr = std::get_if<action::Wait>(&action)) {
-        } else {
-            throw std::runtime_error("unknown action");
-        }
-    }
-}
-
 double Game::Update() {
     /*
      * Move existing troops and bombs
@@ -133,8 +116,8 @@ double Game::Update() {
      * Check end conditions
      */
     engine_.Move();
-    Update(mine_);
-    Update(opponent_);
+    mine_.Play(engine_);
+    opponent_.Play(engine_);
     engine_.Update();
 
     const auto winner = engine_.HasWinner();
