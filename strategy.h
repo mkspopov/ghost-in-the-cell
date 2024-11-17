@@ -38,3 +38,13 @@ public:
         return {moves[genMove(GetRng())]};
     }
 };
+
+class Human {
+public:
+    std::vector<action::Action> MakeDecision(
+        const Engine::State& engine,
+        const Player<RandomStrategy>& player) const
+    {
+        return {};
+    }
+};

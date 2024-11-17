@@ -10,13 +10,16 @@ public:
     }
 
     void Play(Engine& engine) {
+        Play(engine, strategy_.MakeDecision(engine.GetState(), *this));
+    }
+
+    void Play(Engine& engine, const std::vector<action::Action>& actions) {
         /*
          * Be careful, your radar is able to detect the launch of a bomb but you don't know where its target is!
          *
          * It is impossible to send a bomb and a troop at the same time from the same factory and to the same destination.
          * If you try to do so, only the bomb will be sent.
          */
-        const auto actions = strategy_.MakeDecision(engine.GetState(), *this);
         for (const auto& action : actions) {
             if (auto ptr = std::get_if<action::Bomb>(&action)) {
                 engine.Add(*ptr);

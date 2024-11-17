@@ -50,7 +50,7 @@ struct Metrics {
 
 template <typename TSim>
 void RunSimulation(TSim& game, std::string_view name, int steps = 0) {
-    sf::RenderWindow window(sf::VideoMode(2000, 1000), name.data());
+    sf::RenderWindow window(sf::VideoMode(1500, 1000), name.data());
     game.Init(window);
     sf::Clock clock;
     sf::Clock totalClock;
@@ -95,7 +95,7 @@ int main() {
     Engine engine;
     Game game(engine);
     engine.AddFactory(Whose::Mine, 1);
-    engine.AddFactory(Whose::Neutral, 1);
+    engine.AddFactory(Whose::Neutral, 2);
     engine.AddFactory(Whose::Neutral, 2);
     engine.AddFactory(Whose::Opponent, 1);
     engine.SetGraph(GenerateCompleteGraph(engine));

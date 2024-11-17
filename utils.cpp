@@ -42,3 +42,19 @@ std::mt19937& GetRng() {
     thread_local std::mt19937 gen;
     return gen;
 }
+
+float Dot(sf::Vector2f lhs, sf::Vector2f rhs) {
+    return lhs.x * rhs.x + lhs.y * rhs.y;
+}
+
+float Sq(sf::Vector2f v) {
+    return Dot(v, v);
+}
+
+sf::Vector2f Center(const sf::CircleShape& shape) {
+    return shape.getPosition() + sf::Vector2f(shape.getRadius() / 2, shape.getRadius() / 2);
+}
+
+bool In(sf::Vector2f point, const sf::CircleShape& shape) {
+    return Sq(Center(shape) - point) <= shape.getRadius() * shape.getRadius();
+}

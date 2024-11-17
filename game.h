@@ -21,7 +21,7 @@ public:
 
     void Init(sf::RenderWindow& window);
 
-    void HandleInput(sf::Event&);
+    void HandleInput(sf::Event& event);
 
     void Render(float dt);
 
@@ -30,6 +30,6 @@ public:
 private:
     Engine& engine_;
     sf::RenderWindow* window_;
-    Player<RandomStrategy> mine_{Whose::Mine, RandomStrategy{}};
+    Player<Human> mine_{Whose::Mine, Human{}};
     Player<RandomStrategy> opponent_{Whose::Opponent, RandomStrategy{}};
 };

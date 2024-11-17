@@ -43,10 +43,91 @@ void Game::Init(sf::RenderWindow& window) {
     window_ = &window;
 }
 
-void Game::HandleInput(sf::Event&) {
+sf::CircleShape& FactoryShape(sf::Vector2f pos) {
+    static auto shape = sf::CircleShape(FACTORY_RADIUS);
+    shape.setPosition(pos);
+    return shape;
+}
+
+namespace state {
+
+std::optional<action::Action> action;
+
+struct Default {
+    virtual Default* Switch(const sf::Event&, const Engine::State&);
+};
+
+Default defaultState;
+
+struct SelectedFactory : Default {
+    virtual Default* Switch(const sf::Event& event, const Engine::State& engine) override;
+
+    int factoryId;
+};
+
+SelectedFactory selectedFactory;
+
+Default* Default::Switch(const sf::Event& event, const Engine::State& engine) {
+    const auto& [bombs, factories, factoryPos, troops, graph] = engine;
+    if (event.mouseButton.button == sf::Mouse::Button::Left) {
+        const auto pos = sf::Vector2f(event.mouseButton.x, event.mouseButton.y);
+        for (const auto& factory : factories) {
+            if (factory.whose == Whose::Mine
+                && In(pos, FactoryShape(SfPos(factoryPos.at(factory.id)))))
+            {
+                selectedFactory.factoryId = factory.id;
+                return &selectedFactory;
+            }
+        }
+    }
+    return this;
+}
+
+Default* SelectedFactory::Switch(const sf::Event& event, const Engine::State& engine) {
+    const auto& [bombs, factories, factoryPos, troops, graph] = engine;
+    if (event.mouseButton.button == sf::Mouse::Button::Left) {
+        const auto pos = sf::Vector2f(event.mouseButton.x, event.mouseButton.y);
+        for (const auto& factory : factories) {
+            if (factory.whose != Whose::Mine
+                && In(pos, FactoryShape(SfPos(factoryPos.at(factory.id)))))
+            {
+                action = action::Move{
+                    .from = factoryId,
+                    .to = factory.id,
+                    .cyborgs = factories[factoryId].cyborgs,
+                };
+                return &defaultState;
+            }
+        }
+    } else if (event.mouseButton.button == sf::Mouse::Button::Right) {
+        const auto pos = sf::Vector2f(event.mouseButton.x, event.mouseButton.y);
+        for (const auto& factory : factories) {
+            if (factory.whose != Whose::Mine
+                && In(pos, FactoryShape(SfPos(factoryPos.at(factory.id)))))
+            {
+                action = action::Bomb{
+                    .from = factoryId,
+                    .to = factory.id,
+                };
+                return &defaultState;
+            }
+        }
+    }
+    return this;
+}
+
+Default* current = &defaultState;
+
+}  // namespace state
+
+void Game::HandleInput(sf::Event& event) {
+    if constexpr (std::is_same_v<decltype(mine_), Player<Human>>) {
+        state::current = state::current->Switch(event, engine_.GetState());
+    }
 }
 
 const inline sf::Color MINE_FACTORY = sf::Color(0xde, 0xc0, 0x86);
+const inline sf::Color MINE_SELECTED_FACTORY = sf::Color(0xfe, 0xc0, 0x86);
 const inline sf::Color MINE_TROOP = sf::Color(0xe4, 0xc3, 0xae);
 const inline sf::Color MINE_BOMB = sf::Color(0xcc, 0xab, 0xa1);
 const inline sf::Color OPPONENT_FACTORY = sf::Color(0xbf, 0xc8, 0xc9);
@@ -57,14 +138,18 @@ const inline sf::Color NEUTRAL_FACTORY = sf::Color(0x70, 0x79, 0x83);
 void Game::Render(float dt) {
     const auto& [bombs, factories, factoryPos, troops, graph] = engine_.GetState();
     for (const auto& factory : factories) {
-        static auto shape = sf::CircleShape(FACTORY_RADIUS);
-        shape.setPosition(SfPos(factoryPos.at(factory.id)));
+        auto& shape = FactoryShape(SfPos(factoryPos.at(factory.id)));
         if (factory.whose == Whose::Mine) {
             shape.setFillColor(MINE_FACTORY);
         } else if (factory.whose == Whose::Opponent) {
             shape.setFillColor(OPPONENT_FACTORY);
         } else {
             shape.setFillColor(NEUTRAL_FACTORY);
+        }
+        if (const auto selected = dynamic_cast<state::SelectedFactory*>(state::current)) {
+            if (selected->factoryId == factory.id) {
+                shape.setFillColor(MINE_SELECTED_FACTORY);
+            }
         }
         window_->draw(shape);
         DrawText(
@@ -116,7 +201,12 @@ double Game::Update() {
      * Check end conditions
      */
     engine_.Move();
-    mine_.Play(engine_);
+    if constexpr (std::is_same_v<decltype(mine_), Player<Human>>) {
+        if (state::action) {
+            mine_.Play(engine_, {*state::action});
+            state::action.reset();
+        }
+    }
     opponent_.Play(engine_);
     engine_.Update();
 
